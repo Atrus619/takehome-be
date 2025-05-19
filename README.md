@@ -94,7 +94,9 @@ pip install -r requirements.txt
 5. Load data
 `python manage.py import_house_data ../sample-data/data.csv`
 
-6. Run the server
+6. Add your OpenAI API key to the settings.py file
+
+7. Run the server
 `python manage.py runserver`
 
 ## Test Live
