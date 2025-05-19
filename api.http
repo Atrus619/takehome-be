@@ -1,0 +1,41 @@
+#### Variables
+
+@base_url = {{base_url}}/api/v1/properties
+
+#### Requests
+
+# List and paginate
+GET {{base_url}}
+
+#### Requests
+
+# Get by ID
+@property_id = 1
+GET {{base_url}}/{{property_id}}
+
+#### Requests
+
+# Filter
+@city = Hidden Hills
+@num_bedrooms = 5
+GET {{base_url}}?city={{city}}&bedrooms={{num_bedrooms}}
+
+#### Requests
+
+# Order
+GET {{base_url}}?ordering=price
+
+#### Requests
+
+# Search
+GET {{base_url}}?search=lemp ave
+
+#### Requests
+
+# AI Query
+POST {{base_url}}/ai-query/
+Content-Type: application/json
+
+{
+  "query": "top 10 5 bedroom 5 bath houses in the city of Encino"
+}

@@ -68,27 +68,146 @@ Provide a link to the source so we can see the original work and any modificatio
 
 
 # Your Notes
-*TODO: Add your documentation here* 
+## Setup required:
+1. Install python 3.12 (3.13 removes the entire cgi module, which causes problems), e.g.
+```
+pyenv install 3.12
+pyenv local 3.12
+```
+
+Confirm the version is correct with `python --version`
+
+2. Setup virtualenv and install dependencies
+```
+rm -rf .venv
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+3. Navigate to the listings folder (and for all future django commands)
+`cd listings`
+
+4. Apply migrations
+`python manage.py migrate`
+
+5. Load data
+`python manage.py import_house_data ../sample-data/data.csv`
+
+6. Run the server
+`python manage.py runserver`
+
+## Test Live
+- This is currently deployed live, available for you to test, at https://bungalow.abdominusveritas.com. Three quick methods to try it out:
+  - Open browser and go to: [https://bungalow.abdominusveritas.com/api/v1/properties/](https://bungalow.abdominusveritas.com/api/v1/properties/)
+  - Via curl with `curl -X GET https://bungalow.abdominusveritas.com/api/v1/properties/`
+  - Via the `api.http` file in your editor (e.g. VSCode) with the REST Client extension installed. 
+    - Open the `api.http` file and click on the "Send Request" link to test the API.
+- It will be deployed on my home server until the presentation
+  - Deployed as a systemctl service, exposed to the internet over a cloudflare proxy
+
+## How the API works
+- All API endpoints are under a versioned path: `/api/<version>/...`
+    - We default to `v1`
+
+### Endpoints
+- List properties: `GET /api/v1/properties/`
+    - Returns a list of all properties
+- Retrieve Property: `GET /api/v1/properties/{pk}/`
+    - Fetch a single property by its primary key (id).
+- Search Properties: `GET /api/v1/properties/?search=<term>`
+    - You can perform simple full-text search on address, city, and home_type
+- Filtering & Ordering:
+  - You can filter on any of these fields:
+  ```
+  area_unit, bathrooms, bedrooms, home_size, home_type,
+    last_sold_date, last_sold_price, link, price, property_size,
+    rent_price, rentzestimate_amount, rentzestimate_last_updated,
+    tax_value, tax_year, year_built, zestimate_amount, zestimate_last_updated,
+    zillow_id, address, city, state, zipcode
+  ```
+  - Exact match: `GET /api/v1/properties/?city=West%20Hills&bedrooms=4`
+  - Ordering on the same fields: GET `/api/v1/properties/?ordering=-last_sold_price`
+- Pagination:
+  - By default the list endpoint returns:
+  ```
+  {
+  "count": <total>,
+  "next": "<url or null>",
+  "previous": "<url or null>",
+  "results": [ ... ]
+    }
+  ```
+  Page size is 20 by default. Use ?page=<page> to navigate.
+- LLM-Powered Free-Text Query: 
+    ```
+    POST /api/v1/properties/ai-query/
+    Content-Type: application/json
+    
+    {
+      "query": "top 5 most expensive houses built after 1980 in West Hills"
+    }
+    ```
+    - Input: arbitrary user text
+    - Output: JSON array (or paginated results) of matching properties
+    - How it works:
+      - Sends your text to OpenAI's gpt-4.1-mini
+      - Receives a Django-ORM filter dict (and optional _ordering, _limit)
+      - Executes .filter(), .order_by(), and slicing in the viewset
+- Examples exist for each API in the [api.http](api.http) file. 
+  - You can use the REST Client extension in VSCode / PyCharm to run them directly from the editor.
+
+## Testing
+`python manage.py test api`
 
 ## Time Spent
 *Give us a rough estimate of the time you spent working on this. If you spent time learning in order to do this project please feel free to let us know that too.*
 *This makes sure that we are evaluating your work fairly and in context. It also gives us the opportunity to learn and adjust our process if needed.*
 
+I probably spent between 2 and 3 hours doing this. I have never used Django before, so I did a bit of googling / chat gpt to get up to speed on the basics of how it works.
+
 ## Assumptions
 *Did you find yourself needing to make assumptions to finish this?*
 *If so, what were they and how did they impact your design/code?*
 
+I needed to make a significant amount of product use-case and requirements in order to design this API. In the absence of a specific company's use case, I decided to optimize for:
+- Simplicity to build. Less time spent writing the code, less code overall. Partially because this is a take-home interview, and partially because simpler and faster is better in the absence of specific requirements and the ability to clarify them.
+- Simplicity to use. Follows standard REST patterns, and is easy to understand. I considered alternatives like GraphQL, gRPC / protocol buffers, or even a custom DSL, but they all add unnecessary complexity to the API and the client at this stage of development.
+- In the interest of showing off a feature using an LLM to convert free-text queries into data retrieval code, I made the assumption that this would be a useful feature for the target market of this product. 
 
 ## Next Steps
 *Provide us with some notes about what you would do next if you had more time.* 
 *Are there additional features that you would want to add? Specific improvements to your code you would make?*
 ### Features
+- I would want to speak more with the product leader to understand the use case and requirements for this API. It's unclear whether it's important to optimize for throughput, latency, flexibility, or developer productivity. It's also unclear how this software may need to evolve over time, which makes it more difficult to design the code in the optimal manner.
 
 ### Testing
+- I did not write a comprehensive suite of tests for this project. Instead, I lightly cover the happy path in order to demonstrate working unit tests with simple examples that provide the most bang for the buck.
+- With more time, I'd include the following:
+  - Handle bad inputs
+  - Handle all core APIs and pathways (via the query parameters)
+  - Separate LLM testing on the prompt
+  - Randomly generated data with property testing to cover edge cases more thoroughly
+  - End-to-end tests (e.g. via HTTP in Docker) that spin up the full stack and hit the live API
 
 ### Anything else needed to make this production ready?
-
+- Logging
+- Linting
+- Monitoring
+- Error handling
+- Authentication
+- Rate limiting / throttling
+- Admin portal frontend to manage the data
+  - A process to keep the underlying data up to date
+- More comprehensive testing
+- Run on a production server, rather than a development one
+- Autoscaling to handle spikes in traffic
+- CI/CD (e.g. github actions)
+  - Linting, tests, and security scans on every PR
+  - Build and push docker images on merge
+  - Automated deploys to staging / prod
+- Secret management
+- API documentation (beyond the default django one)
 
 ## How to Use
-*Provide any end user documentation you think is necessary and useful here*
-
+Included above in the notes section.
